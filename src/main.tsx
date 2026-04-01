@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Box, Text, useApp, useInput, useStdout } from "ink";
 import { TextInput } from "@inkjs/ui";
 import ChafaGifPlayer from "./components/ChafaGifPlayer.js";
@@ -22,6 +22,8 @@ const MainApp: React.FC = () => {
   const { exit } = useApp();
   const username = "Bennet";
   const [renderKey, setRenderKey] = useState(0);
+  const [selectedOption, setSelectedOption] = useState(0);
+  const options = ["Option 1", "Option 2", "Option 3"];
 
   // Handle terminal resize events
   useEffect(() => {
@@ -36,9 +38,22 @@ const MainApp: React.FC = () => {
     };
   }, []);
 
-  useInput((input) => {
+  useInput((input, key) => {
     if (input === "q") {
       exit();
+    }
+
+    // Arrow key navigation (left/right for horizontal layout)
+    if (key.leftArrow) {
+      setSelectedOption((prev) => (prev > 0 ? prev - 1 : options.length - 1));
+    }
+    if (key.rightArrow) {
+      setSelectedOption((prev) => (prev < options.length - 1 ? prev + 1 : 0));
+    }
+
+    // Enter key to trigger action
+    if (key.return) {
+      handleOptionSelect(selectedOption);
     }
   });
 
@@ -51,10 +66,35 @@ const MainApp: React.FC = () => {
   const gifTop = 3;
   const today = new Date().toLocaleString("default", { weekday: "long" });
 
-  const handleSubmit = (input: string) => {
+  // Memoize all GIF props to prevent ChafaGifPlayer from restarting on state changes
+  const gifPosition = useMemo(
+    () => ({ ...gifConfig.position, top: gifTop, left: gifLeft }),
+    [gifTop, gifLeft]
+  );
+
+  const memoizedGifWidth = useMemo(
+    () => gifConfig.width ?? gifWidth,
+    [gifWidth]
+  );
+
+  const memoizedGifHeight = useMemo(
+    () => gifConfig.height ?? maxGifHeight,
+    [maxGifHeight]
+  );
+
+  const handleGifExit = useCallback(() => exit(), [exit]);
+
+  const handleSubmit = useCallback((input: string) => {
     setUserInput(input);
     // Handle the submitted input here
-  };
+  }, []);
+
+  const handleOptionSelect = useCallback((index: number) => {
+    // Handle the selected option here
+    console.log(`Selected: ${options[index]}`);
+    // You can add your custom logic here
+    // For example: exit(), navigate to another screen, etc.
+  }, [options]);
 
   // Force recalculation on resize
   const currentDimensions = useMemo(
@@ -74,10 +114,10 @@ const MainApp: React.FC = () => {
       <ChafaGifPlayer
         gifPath={gifConfig.gifPath}
         fps={gifConfig.fps}
-        width={gifConfig.width ?? gifWidth}
-        height={gifConfig.height ?? maxGifHeight}
-        position={{ ...gifConfig.position, top: gifTop, left: gifLeft }}
-        onExit={() => exit()}
+        width={memoizedGifWidth}
+        height={memoizedGifHeight}
+        position={gifPosition}
+        onExit={handleGifExit}
       />
       <Box flexDirection="column" alignItems="center" gap={1} paddingTop={1}>
         <Box
@@ -98,8 +138,31 @@ const MainApp: React.FC = () => {
           </Box>
         </Box>
 
-        <Box width={welcomeBoxWidth} borderColor={colors.main} borderStyle="round">
-          <TextInput placeholder=">" onSubmit={handleSubmit} />
+        <Box
+          width={welcomeBoxWidth}
+          borderColor={colors.main}
+          borderStyle="round"
+          flexDirection="row"
+          alignItems="center"
+          justifyContent="space-evenly"
+          paddingY={1}
+        >
+          {options.map((option, index) => (
+            <Box
+              key={index}
+              borderStyle={selectedOption === index ? "bold" : "single"}
+              borderColor={selectedOption === index ? colors.main : undefined}
+              paddingX={1}
+            >
+              <Text
+                color={selectedOption === index ? colors.main : undefined}
+                bold={selectedOption === index}
+              >
+                {selectedOption === index ? "▶ " : "  "}
+                {option}
+              </Text>
+            </Box>
+          ))}
         </Box>
       </Box>
     </Box>
