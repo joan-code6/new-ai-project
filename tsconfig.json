@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "types": ["node"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "target": "ESNext",
+    "strict": true,
+    "jsx": "react",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "ignoreDeprecations": "5.0",
+  },
+  "include": ["src/**/*"],
+}
