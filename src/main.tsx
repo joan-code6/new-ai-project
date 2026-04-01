@@ -1,92 +1,40 @@
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Box, Text, useApp, useInput, useStdout } from "ink";
+import { TextInput } from "@inkjs/ui";
 import ChafaGifPlayer from "./components/ChafaGifPlayer.js";
 
-export type MainAppProps = {
-  gifPath?: string;
-  fps?: number;
-  gifWidth?: number;
-  gifHeight?: number;
-  gifZIndex?: number;
-  gifPosition?: {
-    left: number;
-    top: number;
-  };
+const gifConfig = {
+  gifPath: undefined as string | undefined,
+  fps: 30,
+  width: undefined as number | undefined,
+  height: undefined as number | undefined,
+  position: undefined as { top?: number; left?: number } | undefined,
 };
 
-export function parseMainAppArgs(argv: string[]): MainAppProps {
-  const args = new Map<string, string>();
-
-  for (let i = 0; i < argv.length; i += 1) {
-    const token = argv[i];
-    if (!token.startsWith("--")) {
-      continue;
-    }
-
-    const key = token.slice(2);
-    const value = argv[i + 1];
-    if (!value || value.startsWith("--")) {
-      args.set(key, "true");
-      continue;
-    }
-
-    args.set(key, value);
-    i += 1;
-  }
-
-  const gifPath = args.get("gif");
-  const fpsArg = args.get("fps");
-  const widthArg = args.get("width");
-  const heightArg = args.get("height");
-  const leftArg = args.get("left");
-  const topArg = args.get("top");
-  const zIndexArg = args.get("z-index");
-
-  const fpsValue = fpsArg ? Number.parseInt(fpsArg, 10) : undefined;
-  const widthValue = widthArg ? Number.parseInt(widthArg, 10) : undefined;
-  const heightValue = heightArg ? Number.parseInt(heightArg, 10) : undefined;
-  const leftValue = leftArg ? Number.parseInt(leftArg, 10) : undefined;
-  const topValue = topArg ? Number.parseInt(topArg, 10) : undefined;
-  const zIndexValue = zIndexArg ? Number.parseInt(zIndexArg, 10) : undefined;
-  let gifPosition: MainAppProps["gifPosition"];
-  if (
-    leftValue !== undefined &&
-    topValue !== undefined &&
-    Number.isFinite(leftValue) &&
-    Number.isFinite(topValue)
-  ) {
-    gifPosition = {
-      left: leftValue,
-      top: topValue,
-    };
-  }
-
-  return {
-    gifPath,
-    fps: Number.isFinite(fpsValue) ? fpsValue : undefined,
-    gifWidth: Number.isFinite(widthValue) ? widthValue : undefined,
-    gifHeight: Number.isFinite(heightValue) ? heightValue : undefined,
-    gifZIndex: Number.isFinite(zIndexValue) ? zIndexValue : undefined,
-    gifPosition,
-  };
-}
-
-const MainApp: React.FC<MainAppProps> = ({
-  gifPath,
-  fps,
-  gifWidth,
-  gifHeight,
-  gifZIndex,
-  gifPosition,
-}) => {
+const MainApp: React.FC = () => {
   const colors = {
     main: "#0cbddb",
     black: "#000000",
     secondary: "",
   };
+  const [userInput, setUserInput] = useState("");
   const { stdout } = useStdout();
   const { exit } = useApp();
   const username = "Bennet";
+  const [renderKey, setRenderKey] = useState(0);
+
+  // Handle terminal resize events
+  useEffect(() => {
+    const handleResize = () => {
+      setRenderKey((prev) => prev + 1);
+    };
+
+    process.stdout.on("resize", handleResize);
+
+    return () => {
+      process.stdout.off("resize", handleResize);
+    };
+  }, []);
 
   useInput((input) => {
     if (input === "q") {
@@ -94,57 +42,66 @@ const MainApp: React.FC<MainAppProps> = ({
     }
   });
 
-  const gifLayer = (
-    <Box>
-      <ChafaGifPlayer
-        gifPath={gifPath}
-        fps={fps}
-        width={gifWidth}
-        height={gifHeight}
-        position={gifPosition}
-        onExit={() => exit()}
-      />
-    </Box>
-  );
+  const welcomeBoxWidth = Math.max(40, Math.floor(stdout.columns * 0.8));
+  const welcomeBoxHeight = Math.max(8, Math.floor(stdout.rows * 0.32));
+  const boxLeftOffset = Math.floor((stdout.columns - welcomeBoxWidth) / 2);
+  const maxGifHeight = Math.max(4, welcomeBoxHeight - 2);
+  const gifWidth = maxGifHeight * 2;
+  const gifLeft = Math.max(0, boxLeftOffset + welcomeBoxWidth - gifWidth - 4);
+  const gifTop = 3;
+  const today = new Date().toLocaleString("default", { weekday: "long" });
 
-  const headerLayer = (
-    <Box
-      borderColor={colors.main}
-      borderStyle="bold"
-      alignSelf="center"
-      width="70%"
-      height="20%"
-    >
-      <Box width="50%">
-        <Text></Text>
-      </Box>
-      <Box
-        width="50%"
-        borderStyle="single"
-        borderTop={false}
-        borderBottom={false}
-        borderLeft={true}
-        borderRight={false}
-        borderColor={colors.main}
-      >
-        <Text>Hey, {username}</Text>
-      </Box>
-    </Box>
-  );
+  const handleSubmit = (input: string) => {
+    setUserInput(input);
+    // Handle the submitted input here
+  };
 
-  const renderGifOnTop = (gifZIndex ?? 0) > 0;
+  // Force recalculation on resize
+  const currentDimensions = useMemo(
+    () => ({ columns: stdout.columns, rows: stdout.rows }),
+    [stdout.columns, stdout.rows, renderKey],
+  );
 
   return (
     <Box
-      width={stdout.columns}
-      height={stdout.rows}
+      width={currentDimensions.columns}
+      height={currentDimensions.rows}
       borderStyle="single"
       borderColor={colors.main}
       backgroundColor={colors.black}
       flexDirection="column"
     >
-      {renderGifOnTop ? headerLayer : gifLayer}
-      {renderGifOnTop ? gifLayer : headerLayer}
+      <ChafaGifPlayer
+        gifPath={gifConfig.gifPath}
+        fps={gifConfig.fps}
+        width={gifConfig.width ?? gifWidth}
+        height={gifConfig.height ?? maxGifHeight}
+        position={{ ...gifConfig.position, top: gifTop, left: gifLeft }}
+        onExit={() => exit()}
+      />
+      <Box flexDirection="column" alignItems="center" gap={1} paddingTop={1}>
+        <Box
+          borderColor={colors.main}
+          borderStyle="round"
+          width={welcomeBoxWidth}
+          height={welcomeBoxHeight}
+          paddingX={2}
+          paddingY={1}
+          flexDirection="row"
+        >
+          <Box width="70%" flexDirection="column" justifyContent="center">
+            <Text>Hello {username},</Text>
+            <Text>what are you cooking today?</Text>
+          </Box>
+          <Box width="30%" alignItems="center" justifyContent="center">
+            <Text> </Text>
+          </Box>
+        </Box>
+
+        <Box width={welcomeBoxWidth} borderColor={colors.main} borderStyle="round">
+          <TextInput placeholder=">" onSubmit={handleSubmit} />
+        </Box>
+      </Box>
     </Box>
   );
 };

@@ -10,8 +10,8 @@ export type ChafaGifPlayerProps = {
   width?: number;
   height?: number;
   position?: {
-    left: number;
-    top: number;
+    left?: number;
+    top?: number;
   };
   onExit?: (exitCode: number) => void;
 };

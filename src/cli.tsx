@@ -1,7 +1,5 @@
 import React from "react";
 import { render } from "ink";
-import MainApp, { parseMainAppArgs } from "./main.js";
+import MainApp from "./main.js";
 
-const mainProps = parseMainAppArgs(process.argv.slice(2));
-
-render(React.createElement(MainApp, mainProps));
+render(React.createElement(MainApp));
