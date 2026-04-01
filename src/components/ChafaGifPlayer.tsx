@@ -7,6 +7,12 @@ import {join} from 'node:path';
 export type ChafaGifPlayerProps = {
   gifPath?: string;
   fps?: number;
+  width?: number;
+  height?: number;
+  position?: {
+    left: number;
+    top: number;
+  };
   onExit?: (exitCode: number) => void;
 };
 
@@ -38,7 +44,14 @@ function hasChafaBinary(): boolean {
 }
 
 // Render the chafa output into a centered region and avoid clearing the entire terminal.
-const ChafaGifPlayer: React.FC<ChafaGifPlayerProps> = ({gifPath, fps = 30, onExit}) => {
+const ChafaGifPlayer: React.FC<ChafaGifPlayerProps> = ({
+  gifPath,
+  fps = 30,
+  width,
+  height,
+  position,
+  onExit
+}) => {
   const {stdout} = useStdout();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const childRef = useRef<ChildProcess | null>(null);
@@ -59,13 +72,26 @@ const ChafaGifPlayer: React.FC<ChafaGifPlayerProps> = ({gifPath, fps = 30, onExi
 
     const terminalColumns = Math.max(20, process.stdout.columns ?? 80);
     const terminalRows = Math.max(10, process.stdout.rows ?? 24);
-    const renderCols = Math.max(4, Math.floor(terminalColumns * 0.6));
-    const renderRows = Math.max(4, Math.floor(terminalRows * 0.7));
+    const renderCols = Math.max(
+      4,
+      width !== undefined ? Math.floor(width) : Math.floor(terminalColumns * 0.6)
+    );
+    const renderRows = Math.max(
+      4,
+      height !== undefined ? Math.floor(height) : Math.floor(terminalRows * 0.7)
+    );
     const offsetCalibrationCols = 0;
     const offsetCalibrationRows = 0;
-    const offsetLeft = Math.max(0, Math.floor((terminalColumns - renderCols) / 2) + offsetCalibrationCols);
-    const offsetTop = Math.max(0, Math.floor((terminalRows - renderRows) / 2) + offsetCalibrationRows);
-
+    const centeredLeft = Math.max(0, Math.floor((terminalColumns - renderCols) / 2) + offsetCalibrationCols);
+    const centeredTop = Math.max(0, Math.floor((terminalRows - renderRows) / 2) + offsetCalibrationRows);
+    const offsetLeft = Math.max(
+      0,
+      position?.left !== undefined ? Math.floor(position.left) : centeredLeft
+    );
+    const offsetTop = Math.max(
+      0,
+      position?.top !== undefined ? Math.floor(position.top) : centeredTop
+    );
     const args = [
       '--format',
       'symbols',
@@ -134,7 +160,7 @@ const ChafaGifPlayer: React.FC<ChafaGifPlayerProps> = ({gifPath, fps = 30, onExi
         // ignore
       }
     };
-  }, [resolvedGifPath, normalizedFps, onExit, stdout]);
+  }, [resolvedGifPath, normalizedFps, width, height, position, onExit, stdout]);
 
   if (errorMessage) {
     return <Text color="red">{errorMessage}</Text>;
